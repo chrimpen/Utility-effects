@@ -327,11 +327,17 @@
       // Provisional final optimum (both goods normal in Cobb-Douglas)
       const C_default = marshalDemand(px1, py1, m1);
 
-      // x-range based on relevant bundles
-      const maxBundleX = Math.max(A.x, C_default.x, 1);
-      const xMax = maxBundleX * 1.6;
+      // ---- NEW: choose ranges so BOTH budgets are fully visible ----
+      const xIntercept0 = m0 / px0;
+      const xIntercept1 = m1 / px1;
+      const yIntercept0 = m0 / py0;
+      const yIntercept1 = m1 / py1;
 
-      // Budget lines: initial and final
+      let xMax = 1.05 * Math.max(xIntercept0, xIntercept1, 1);
+      let yMaxBase = 1.05 * Math.max(yIntercept0, yIntercept1, 1);
+      // -------------------------------------------------------------
+
+      // Budget lines: initial and final (now drawn up to xMax, which covers full intercepts)
       const BL0 = budgetLinePoints(px0, py0, m0, xMax);
       const BL1 = budgetLinePoints(px1, py1, m1, xMax);
 
@@ -493,9 +499,9 @@
         marker: { size: 9 },
       });
 
-      const yCandidates = BL0.y.concat(BL1.y);
-      let yMax = Math.max(...yCandidates, A.y, B.y, C.y, 1);
-      yMax *= 1.4;
+      // yMax: ensure full vertical intercepts are visible, plus points
+      let yMax = Math.max(yMaxBase, A.y, B.y, C.y);
+      yMax *= 1.05;
 
       const layout = {
         margin: { t: 20, r: 10, b: 40, l: 50 },
