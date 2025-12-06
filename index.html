@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Hicks vs Slutsky with Normal/Inferior Goods</title>
+  <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+        sans-serif;
+      margin: 0;
+      padding: 1.5rem;
+      background: #f5f5f7;
+      color: #111827;
+    }
+    h1 {
+      font-size: 1.6rem;
+      margin-bottom: 0.3rem;
+    }
+    .subtitle {
+      font-size: 0.9rem;
+      color: #4b5563;
+      margin-bottom: 1rem;
+    }
+    .container {
+      display: grid;
+      grid-template-columns: 340px minmax(0, 1fr);
+      gap: 1.2rem;
+      align-items: flex-start;
+    }
+    .panel {
+      background: #ffffff;
+      border-radius: 0.75rem;
+      padding: 0.9rem 1rem;
+      box-shadow: 0 10px 25px rgba(15, 23, 42, 0.08);
+    }
+    .panel h2 {
+      font-size: 1rem;
+      margin: 0 0 0.6rem;
+    }
+    .field-group {
+      margin-bottom: 0.7rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.2rem;
+    }
+    .field-row {
+      display: flex;
+      gap: 0.4rem;
+    }
+    label {
+      font-size: 0.85rem;
+      color: #374151;
+    }
+    input[type="number"],
+    select {
+      padding: 0.25rem 0.35rem;
+      border-radius: 0.5rem;
+      border: 1px solid #d1d5db;
+      font-size: 0.85rem;
+      flex: 1;
+    }
+    input[type="range"] {
+      width: 100%;
+    }
+    .small-text {
+      font-size: 0.8rem;
+      color: #6b7280;
+    }
+    button {
+      margin-top: 0.4rem;
+      padding: 0.4rem 0.7rem;
+      border-radius: 999px;
+      border: none;
+      background: #2563eb;
+      color: white;
+      font-size: 0.85rem;
+      cursor: pointer;
+    }
+    button:hover {
+      background: #1d4ed8;
+    }
+    #graph {
+      height: 520px;
+    }
+    @media (max-width: 900px) {
+      .container {
+        grid-template-columns: 1fr;
+      }
+      #graph {
+        height: 420px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <h1>Hicks vs Slutsky Decomposition</h1>
+  <p class="subtitle">
+    Utility base: <code>U(x, y) = √(x·y)</code> (used for A and B). Choose decomposition,
+    which variable changes, and whether each good is <b>normal</b> or <b>inferior</b>.
+    The final point C shifts so that the <i>income effect</i> matches your choice.
+  </p>
+
+  <div class="container">
+    <!-- Control panel -->
+    <div class="panel">
+      <h2>Controls</h2>
+
+      <div class="field-group">
+        <label for="decompSelect">Decomposition type</label>
+        <select id="decompSelect">
+          <option value="hicks">Hicks</option>
+          <option value="slutsky">Slutsky</option>
+        </select>
+      </div>
+
+      <div class="field-group">
+        <label for="changeTypeSelect">Which variable changes?</label>
+        <select id="changeTypeSelect">
+          <option value="px">Price of x (pₓ)</option>
+          <option value="py">Price of y (pᵧ)</option>
+          <option value="m">Income (m)</option>
+        </select>
+        <span class="small-text">
+          For a pure income change (m), relative prices don't change,
+          so the substitution effect is zero (A and B coincide).
+        </span>
+      </div>
+
+      <hr />
+
+      <div class="field-group">
+        <label>Initial parameters</label>
+        <div class="field-row">
+          <label class="small-text" style="flex:1;">
+            pₓ
+            <input id="px0" type="number" min="0.1" step="0.1" value="2" />
+          </label>
+          <label class="small-text" style="flex:1;">
+            pᵧ
+            <input id="py0" type="number" min="0.1" step="0.1" value="2" />
+          </label>
+          <label class="small-text" style="flex:1;">
+            m
+            <input id="m0" type="number" min="1" step="1" value="20" />
+          </label>
+        </div>
+      </div>
+
+      <div class="field-group">
+        <label id="sliderLabel">New pₓ</label>
+        <input id="changeSlider" type="range" min="0.5" max="3" step="0.05" />
+        <div class="small-text">
+          New value: <span id="newValText"></span>
+        </div>
+      </div>
+
+      <hr />
+
+      <div class="field-group">
+        <label>Good types (for the income effect)</label>
+        <div class="field-row">
+          <label class="small-text" style="flex:1;">
+            Good x
+            <select id="xTypeSelect">
+              <option value="normal">Normal</option>
+              <option value="inferior">Inferior</option>
+            </select>
+          </label>
+          <label class="small-text" style="flex:1;">
+            Good y
+            <select id="yTypeSelect">
+              <option value="normal">Normal</option>
+              <option value="inferior">Inferior</option>
+            </select>
+          </label>
+        </div>
+        <span class="small-text">
+          If real income rises: normal goods ↑, inferior goods ↓ (and vice versa).
+          The point C moves accordingly.
+        </span>
+      </div>
+
+      <button id="resetButton">Reset to defaults</button>
+
+      <p class="small-text" style="margin-top:0.8rem;">
+        The graph shows: initial and new budget lines, the compensated budget
+        (according to Hicks/Slutsky), the initial and final indifference curves,
+        and the points A (initial), B (substitution), C (final: substitution + income).
+      </p>
+    </div>
+
+    <!-- Graph -->
+    <div class="panel">
+      <div id="graph"></div>
+    </div>
+  </div>
+
+  <script>
+    // Utility and demand for U = sqrt(xy)
+    function marshalDemand(px, py, m) {
+      // For U = sqrt(xy), optimum is x = m/(2px), y = m/(2py)
+      return {
+        x: m / (2 * px),
+        y: m / (2 * py),
+      };
+    }
+
+    function indirectUtility(px, py, m) {
+      // v(px,py,m) = m / (2 * sqrt(px*py))
+      return m / (2 * Math.sqrt(px * py));
+    }
+
+    function budgetLinePoints(px, py, m, xMax, n = 200) {
+      const xs = [];
+      const ys = [];
+      const intercept = m / py;
+      const slope = px / py;
+      for (let i = 0; i < n; i++) {
+        const x = (xMax * i) / (n - 1);
+        const y = intercept - slope * x;
+        if (y >= 0) {
+          xs.push(x);
+          ys.push(y);
+        }
+      }
+      return { x: xs, y: ys };
+    }
+
+    function indifferenceCurvePoints(U, xMax, n = 200) {
+      const xs = [];
+      const ys = [];
+      const U2 = U * U; // since y = U^2 / x
+      for (let i = 0; i < n; i++) {
+        const x = (xMax * (i + 1)) / (n + 1); // avoid x=0
+        const y = U2 / x;
+        xs.push(x);
+        ys.push(y);
+      }
+      return { x: xs, y: ys };
+    }
+
+    const graphDiv = document.getElementById("graph");
+    const decompSelect = document.getElementById("decompSelect");
+    const changeTypeSelect = document.getElementById("changeTypeSelect");
+    const px0Input = document.getElementById("px0");
+    const py0Input = document.getElementById("py0");
+    const m0Input = document.getElementById("m0");
+    const slider = document.getElementById("changeSlider");
+    const sliderLabel = document.getElementById("sliderLabel");
+    const newValText = document.getElementById("newValText");
+    const resetButton = document.getElementById("resetButton");
+    const xTypeSelect = document.getElementById("xTypeSelect");
+    const yTypeSelect = document.getElementById("yTypeSelect");
+
+    function clamp(val, min, max) {
+      return Math.max(min, Math.min(max, val));
+    }
+
+    function updateSliderForChangeType() {
+      const px0 = parseFloat(px0Input.value) || 2;
+      const py0 = parseFloat(py0Input.value) || 2;
+      const m0 = parseFloat(m0Input.value) || 20;
+      const type = changeTypeSelect.value;
+
+      if (type === "px") {
+        sliderLabel.innerHTML = "New pₓ";
+        slider.min = (0.2 * px0).toFixed(2);
+        slider.max = (3.0 * px0).toFixed(2);
+        slider.step = (px0 / 40).toFixed(3);
+        slider.value = (0.5 * px0).toFixed(2);
+      } else if (type === "py") {
+        sliderLabel.innerHTML = "New pᵧ";
+        slider.min = (0.2 * py0).toFixed(2);
+        slider.max = (3.0 * py0).toFixed(2);
+        slider.step = (py0 / 40).toFixed(3);
+        slider.value = (0.5 * py0).toFixed(2);
+      } else {
+        sliderLabel.innerHTML = "New income m";
+        slider.min = (0.2 * m0).toFixed(1);
+        slider.max = (3.0 * m0).toFixed(1);
+        slider.step = (m0 / 40).toFixed(2);
+        slider.value = (1.5 * m0).toFixed(1);
+      }
+      newValText.textContent = slider.value;
+    }
+
+    function incomeDirection(goodType, signIncome) {
+      if (signIncome === 0) return 0;
+      // Normal good: quantity moves with income; Inferior: opposite
+      if (goodType === "normal") return signIncome;
+      return -signIncome;
+    }
+
+    function updateGraph() {
+      let px0 = parseFloat(px0Input.value) || 2;
+      let py0 = parseFloat(py0Input.value) || 2;
+      let m0 = parseFloat(m0Input.value) || 20;
+
+      // Ensure positive
+      px0 = clamp(px0, 0.1, 1000);
+      py0 = clamp(py0, 0.1, 1000);
+      m0 = clamp(m0, 1, 100000);
+
+      const type = changeTypeSelect.value;
+      const decomp = decompSelect.value;
+      const sliderVal = parseFloat(slider.value);
+      newValText.textContent = sliderVal.toFixed(3);
+
+      // New parameters depend on what changes
+      let px1 = px0;
+      let py1 = py0;
+      let m1 = m0;
+
+      if (type === "px") {
+        px1 = sliderVal;
+      } else if (type === "py") {
+        py1 = sliderVal;
+      } else {
+        m1 = sliderVal;
+      }
+
+      // Initial optimum A
+      const A = marshalDemand(px0, py0, m0);
+      const U0 = indirectUtility(px0, py0, m0);
+
+      // Provisional final optimum (both goods normal in Cobb-Douglas)
+      const C_default = marshalDemand(px1, py1, m1);
+
+      // x-range based on relevant bundles
+      const maxBundleX = Math.max(A.x, C_default.x, 1);
+      const xMax = maxBundleX * 1.6;
+
+      // Budget lines: initial and final
+      const BL0 = budgetLinePoints(px0, py0, m0, xMax);
+      const BL1 = budgetLinePoints(px1, py1, m1, xMax);
+
+      // Substitution point B and compensated budget line
+      let B = { x: A.x, y: A.y };
+      let B_label = "B (substitution)";
+      let compBudget = null;
+      let compName = "";
+      let signIncome = 0; // sign of REAL income change
+
+      if (type === "px" || type === "py") {
+        if (decomp === "hicks") {
+          // Hicks: adjust income so utility stays at U0 with new prices
+          const mH = 2 * U0 * Math.sqrt(px1 * py1);
+          B = marshalDemand(px1, py1, mH);
+          compBudget = budgetLinePoints(px1, py1, mH, xMax);
+          compName = "Compensated budget (Hicks)";
+          B_label = "B (Hicks, substitution)";
+          // Real income change: m0 vs cost of U0 at new prices
+          signIncome = Math.sign(m0 - mH);
+        } else {
+          // Slutsky: adjust income so A is just affordable with new prices
+          const mS = px1 * A.x + py1 * A.y;
+          B = marshalDemand(px1, py1, mS);
+          compBudget = budgetLinePoints(px1, py1, mS, xMax);
+          compName = "Compensated budget (Slutsky)";
+          B_label = "B (Slutsky, substitution)";
+          // Real income change: m0 vs income that just buys A at new prices
+          signIncome = Math.sign(m0 - mS);
+        }
+      } else {
+        // Pure income change: no substitution effect (A = B)
+        B = { x: A.x, y: A.y };
+        B_label = "B (same as A – no substitution)";
+        compBudget = null;
+        signIncome = Math.sign(m1 - m0);
+      }
+
+      // Good types for income effect
+      const xType = xTypeSelect.value; // "normal" or "inferior"
+      const yType = yTypeSelect.value;
+
+      // Final point C: start from default Cobb-Douglas solution,
+      // then adjust when there are inferior goods so that
+      // direction of income effect matches theory.
+      let C = { x: C_default.x, y: C_default.y };
+
+      if (!(xType === "normal" && yType === "normal") && signIncome !== 0) {
+        // We want C = B + (income effect), then project onto the new budget line.
+        const dirX = incomeDirection(xType, signIncome);
+        const dirY = incomeDirection(yType, signIncome);
+
+        // Magnitude of substitution movement as a reference
+        let subDX = B.x - A.x;
+        let subDY = B.y - A.y;
+
+        // If there is no substitution (pure income change), use A as reference
+        if (type === "m") {
+          if (Math.abs(subDX) < 1e-6) subDX = A.x || 1;
+          if (Math.abs(subDY) < 1e-6) subDY = A.y || 1;
+        }
+        const magX = Math.max(Math.abs(subDX), 0.3);
+        const magY = Math.max(Math.abs(subDY), 0.3);
+
+        const scale = 0.5; // how strong the income effect is visually
+
+        let rawCx = B.x + scale * dirX * magX;
+        let rawCy = B.y + scale * dirY * magY;
+
+        rawCx = Math.max(rawCx, 0.1);
+        rawCy = Math.max(rawCy, 0.1);
+
+        // Project (rawCx, rawCy) onto the actual new budget line px1 x + py1 y = m1
+        const denom = px1 * rawCx + py1 * rawCy;
+        if (denom > 0) {
+          const alpha = m1 / denom;
+          C.x = alpha * rawCx;
+          C.y = alpha * rawCy;
+        }
+      }
+
+      // Utilities for ICs
+      const U1 = Math.sqrt(C.x * C.y);
+
+      // Indifference curves for U0 and U1
+      const IC0 = indifferenceCurvePoints(U0, xMax);
+      const IC1 = indifferenceCurvePoints(U1, xMax);
+
+      // Build Plotly traces
+      const traces = [];
+
+      // Indifference curves
+      traces.push({
+        x: IC0.x,
+        y: IC0.y,
+        mode: "lines",
+        name: "Indifference curve U₀",
+        line: { dash: "dot" },
+      });
+      traces.push({
+        x: IC1.x,
+        y: IC1.y,
+        mode: "lines",
+        name: "Indifference curve U₁",
+        line: { dash: "dot" },
+      });
+
+      // Budget lines
+      traces.push({
+        x: BL0.x,
+        y: BL0.y,
+        mode: "lines",
+        name: "Initial budget",
+      });
+      traces.push({
+        x: BL1.x,
+        y: BL1.y,
+        mode: "lines",
+        name: "New budget",
+      });
+
+      // Compensated budget, if relevant
+      if (compBudget) {
+        traces.push({
+          x: compBudget.x,
+          y: compBudget.y,
+          mode: "lines",
+          name: compName,
+          line: { dash: "dash" },
+        });
+      }
+
+      // Points A, B, C
+      traces.push({
+        x: [A.x],
+        y: [A.y],
+        mode: "markers+text",
+        name: "A (initial)",
+        text: ["A"],
+        textposition: "top right",
+        marker: { size: 9 },
+      });
+      traces.push({
+        x: [B.x],
+        y: [B.y],
+        mode: "markers+text",
+        name: B_label,
+        text: ["B"],
+        textposition: "top right",
+        marker: { size: 9 },
+      });
+      traces.push({
+        x: [C.x],
+        y: [C.y],
+        mode: "markers+text",
+        name: "C (final: substitution + income)",
+        text: ["C"],
+        textposition: "top right",
+        marker: { size: 9 },
+      });
+
+      const yCandidates = BL0.y.concat(BL1.y);
+      let yMax = Math.max(...yCandidates, A.y, B.y, C.y, 1);
+      yMax *= 1.4;
+
+      const layout = {
+        margin: { t: 20, r: 10, b: 40, l: 50 },
+        xaxis: { title: "Good x", range: [0, xMax] },
+        yaxis: { title: "Good y", range: [0, yMax] },
+        legend: { orientation: "h", x: 0, y: 1.12 },
+        hovermode: "closest",
+      };
+
+      Plotly.newPlot(graphDiv, traces, layout, { responsive: true });
+    }
+
+    // Event listeners
+    [
+      decompSelect,
+      changeTypeSelect,
+      px0Input,
+      py0Input,
+      m0Input,
+      xTypeSelect,
+      yTypeSelect,
+    ].forEach((el) => {
+      el.addEventListener("change", () => {
+        updateSliderForChangeType();
+        updateGraph();
+      });
+    });
+
+    slider.addEventListener("input", () => {
+      newValText.textContent = parseFloat(slider.value).toFixed(3);
+      updateGraph();
+    });
+
+    resetButton.addEventListener("click", () => {
+      px0Input.value = 2;
+      py0Input.value = 2;
+      m0Input.value = 20;
+      decompSelect.value = "hicks";
+      changeTypeSelect.value = "px";
+      xTypeSelect.value = "normal";
+      yTypeSelect.value = "normal";
+      updateSliderForChangeType();
+      updateGraph();
+    });
+
+    // Initial render
+    updateSliderForChangeType();
+    updateGraph();
+  </script>
+</body>
+</html>
