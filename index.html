@@ -177,7 +177,7 @@
         </div>
         <span class="small-text">
           If real income rises: normal goods ↑, inferior goods ↓ (and vice versa).
-          The point C moves accordingly from B.
+          The point C moves accordingly.
         </span>
       </div>
 
@@ -327,16 +327,24 @@
       // Provisional final optimum (both goods normal in Cobb-Douglas)
       const C_default = marshalDemand(px1, py1, m1);
 
-      // Intercepts of initial and final BL (for axes)
+      // ---- NEW: choose ranges so BOTH budgets are fully visible ----
       const xIntercept0 = m0 / px0;
       const xIntercept1 = m1 / px1;
       const yIntercept0 = m0 / py0;
       const yIntercept1 = m1 / py1;
 
+      let xMax = 1.05 * Math.max(xIntercept0, xIntercept1, 1);
+      let yMaxBase = 1.05 * Math.max(yIntercept0, yIntercept1, 1);
+      // -------------------------------------------------------------
+
+      // Budget lines: initial and final (now drawn up to xMax, which covers full intercepts)
+      const BL0 = budgetLinePoints(px0, py0, m0, xMax);
+      const BL1 = budgetLinePoints(px1, py1, m1, xMax);
+
       // Substitution point B and compensated budget line
       let B = { x: A.x, y: A.y };
       let B_label = "B (substitution)";
-      let compBudgetParams = null; // we'll build budget after knowing xMax
+      let compBudget = null;
       let compName = "";
       let signIncome = 0; // sign of REAL income change
 
@@ -345,7 +353,7 @@
           // Hicks: adjust income so utility stays at U0 with new prices
           const mH = 2 * U0 * Math.sqrt(px1 * py1);
           B = marshalDemand(px1, py1, mH);
-          compBudgetParams = { px: px1, py: py1, m: mH };
+          compBudget = budgetLinePoints(px1, py1, mH, xMax);
           compName = "Compensated budget (Hicks)";
           B_label = "B (Hicks, substitution)";
           // Real income change: m0 vs cost of U0 at new prices
@@ -354,7 +362,7 @@
           // Slutsky: adjust income so A is just affordable with new prices
           const mS = px1 * A.x + py1 * A.y;
           B = marshalDemand(px1, py1, mS);
-          compBudgetParams = { px: px1, py: py1, m: mS };
+          compBudget = budgetLinePoints(px1, py1, mS, xMax);
           compName = "Compensated budget (Slutsky)";
           B_label = "B (Slutsky, substitution)";
           // Real income change: m0 vs income that just buys A at new prices
@@ -364,7 +372,7 @@
         // Pure income change: no substitution effect (A = B)
         B = { x: A.x, y: A.y };
         B_label = "B (same as A – no substitution)";
-        compBudgetParams = null;
+        compBudget = null;
         signIncome = Math.sign(m1 - m0);
       }
 
@@ -378,7 +386,7 @@
       let C = { x: C_default.x, y: C_default.y };
 
       if (!(xType === "normal" && yType === "normal") && signIncome !== 0) {
-        // We want C = B + (income effect) from B.
+        // We want C = B + (income effect), then project onto the new budget line.
         const dirX = incomeDirection(xType, signIncome);
         const dirY = incomeDirection(yType, signIncome);
 
@@ -402,43 +410,17 @@
         rawCx = Math.max(rawCx, 0.1);
         rawCy = Math.max(rawCy, 0.1);
 
-        // *** CHANGED: ΔΕΝ προβάλλουμε στο budget line, κρατάμε το rawC ***
-        C.x = rawCx;
-        C.y = rawCy;
+        // Project (rawCx, rawCy) onto the actual new budget line px1 x + py1 y = m1
+        const denom = px1 * rawCx + py1 * rawCy;
+        if (denom > 0) {
+          const alpha = m1 / denom;
+          C.x = alpha * rawCx;
+          C.y = alpha * rawCy;
+        }
       }
 
       // Utilities for ICs
       const U1 = Math.sqrt(C.x * C.y);
-
-      // *** CHANGED: οριστικό xMax ώστε να χωράνε budget lines + A,B,C ***
-      let xMax = 1.05 * Math.max(
-        xIntercept0,
-        xIntercept1,
-        A.x,
-        B.x,
-        C.x,
-        1
-      );
-      let yMaxBase = 1.05 * Math.max(
-        yIntercept0,
-        yIntercept1,
-        1
-      );
-
-      // Budget lines: initial and final
-      const BL0 = budgetLinePoints(px0, py0, m0, xMax);
-      const BL1 = budgetLinePoints(px1, py1, m1, xMax);
-
-      // Compensated budget, if relevant
-      let compBudget = null;
-      if (compBudgetParams) {
-        compBudget = budgetLinePoints(
-          compBudgetParams.px,
-          compBudgetParams.py,
-          compBudgetParams.m,
-          xMax
-        );
-      }
 
       // Indifference curves for U0 and U1
       const IC0 = indifferenceCurvePoints(U0, xMax);
